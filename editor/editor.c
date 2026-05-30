@@ -84,17 +84,55 @@ edit_read_key()
     if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
 
     if (seq[0] == '[') {
-      switch (seq[1]) {
-        case 'A': return AR_UP;
-        case 'B': return AR_DOWN;
-        case 'C': return AR_RIGHT;
-        case 'D': return AR_LEFT;
-      }
+	if (seq[1] == '1') {
+	    char seq2[2];
+	    if (read(STDIN_FILENO, &seq2[0], 1) != 1) return '\x1b';
+	    if (read(STDIN_FILENO, &seq2[1], 1) != 1) return '\x1b';
+	    char seq3[1];
+	    if (read(STDIN_FILENO, &seq3[0], 1) != 1) return '\x1b';
+	    if (seq2[1] == '5') {
+		switch (seq3[0]) {
+		    case 'C': return CTRL_AR_RIGHT;
+		    case 'D': return CTRL_AR_LEFT;
+            }
+        }
     }
+    switch (seq[1]) {
+	case 'A': return AR_UP;
+	case 'B': return AR_DOWN;
+	case 'C': return AR_RIGHT;
+	case 'D': return AR_LEFT;
+    }
+}
     return '\x1b';
   } else {
     return c;
   }
+}
+
+void
+ed_move_word_right()
+{
+    if (E.cy >= E.nrows) return;
+    erow *row = &E.row[E.cy];
+
+    // skip current word
+    while (E.cx < row->size && row->chars[E.cx] != ' ') E.cx++;
+    // skip spaces
+    while (E.cx < row->size && row->chars[E.cx] == ' ') E.cx++;
+}
+
+void
+ed_move_word_left()
+{
+    if (E.cy >= E.nrows) return;
+    erow *row = &E.row[E.cy];
+
+    if (E.cx > 0) E.cx--;
+    // skip spaces
+    while (E.cx > 0 && row->chars[E.cx] == ' ') E.cx--;
+    // skip word
+    while (E.cx > 0 && row->chars[E.cx - 1] != ' ') E.cx--;
 }
 
 char

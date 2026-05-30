@@ -274,6 +274,12 @@ process_key_press()
 	    E.file_query[0] = '\0';
 	    E.file_qlen = 0;
 	    break;
+	case CTRL_AR_RIGHT:
+	    ed_move_word_right();
+	    break;
+	case CTRL_AR_LEFT:
+	    ed_move_word_left();
+	    break;
 
 	case CTRL_KEY('l'):
 	case '\x1b':

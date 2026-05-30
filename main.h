@@ -66,6 +66,8 @@ enum editorKey {
   AR_RIGHT,
   AR_UP,
   AR_DOWN,
+  CTRL_AR_LEFT,
+  CTRL_AR_RIGHT,
 };
 
 // functions

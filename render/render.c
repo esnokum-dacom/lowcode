@@ -10,7 +10,7 @@ rows(struct abuf *ab)
 	if (filerow >= E.nrows) {
 	    if (E.nrows == 0 && y == E.screenrows / 3) {
 		char welcome[80];
-		int welcomelen = snprintf(welcome, sizeof(welcome), "ON ed");
+		int welcomelen = snprintf(welcome, sizeof(welcome), "Low Code");
 		if (welcomelen > E.screencols) welcomelen = E.screencols;
 		int padding = (E.screencols - welcomelen) / 2;
 		if (padding) 

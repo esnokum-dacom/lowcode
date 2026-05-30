@@ -35,5 +35,9 @@ void ed_delch();
 
 void ed_exec_cmd(char *cmd);
 
+void ed_move_word_right();
+
+void ed_move_word_left();
+
 
 #endif
