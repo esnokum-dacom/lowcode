@@ -105,10 +105,16 @@ fp_render(struct abuf *ab)
 
         char line[256];
         int len;
+	int slen = strlen(E.file_list[i]);
+	int padding = (E.screencols - slen) / 2;
+
         if (i == E.file_sel)
-            len = snprintf(line, sizeof(line), "> %s", E.file_list[i]);
-        else
-            len = snprintf(line, sizeof(line), "  %s", E.file_list[i]);
+	{
+	    len = snprintf(line, sizeof(line), "%*s\x1b[7m [ %s ] \x1b[m%*s", padding - 3, "", E.file_list[i], padding, "");
+	}
+        else{
+	    len = snprintf(line, sizeof(line), "%*s%s%*s ", padding, "", E.file_list[i], padding, "");
+	}
 
 	if (E.file_count == 0) {
 	    abAppend(ab, "  (empty)\x1b[K\r\n", 14);

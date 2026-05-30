@@ -21,3 +21,4 @@ This text editor is based on the idea of NANO and vim.
 ```cmd
  :explorer (To execute the file explorer)
 ```
+| This is written in the text editor, btw

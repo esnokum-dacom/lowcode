@@ -174,7 +174,13 @@ process_key_press()
 
     if (E.cmd_mode) {
         if (c == '\r') {
-            ed_exec_cmd(E.cmdbuf);
+	    char input_copy[256];
+	    strncpy(input_copy, E.cmdbuf, sizeof(input_copy) -1);
+	    input_copy[sizeof(input_copy) - 1] = '\0';
+	    if (input_copy[0] != '\0')
+		ed_parse_and_exec(input_copy);
+	    else
+		E.statusmsg[0] = '\0';
             E.cmd_mode = 0;
             E.cmdbuf[0] = '\0';
             E.cmdlen = 0;
@@ -267,12 +273,14 @@ process_key_press()
 	    break;
 	case CTRL_KEY('s'):
 	    saveD();
+	    ed_set_status("File writted");
 	    break;
 	case CTRL_KEY('f'):
 	    fp_load();
 	    E.file_mode = 1;
 	    E.file_query[0] = '\0';
 	    E.file_qlen = 0;
+	    ed_set_status("Explorer: Type file name");
 	    break;
 	case CTRL_AR_RIGHT:
 	    ed_move_word_right();

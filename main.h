@@ -46,6 +46,8 @@ struct ed_conf
     erow *row;
     char *filen;
 
+    char statusmsg[256];
+
     int	file_mode;
     char **file_list;
     int file_count;

@@ -1,7 +1,9 @@
 #include "editor.h"
 #include "../render/render.h"
 #include <errno.h>
+#include "../command.h"
 #include <sys/ioctl.h>
+#include <stdarg.h>
 
 void
 ed_scroll()
@@ -37,7 +39,7 @@ ed_statusbar(struct abuf *ab)
 
     int len = snprintf(status, sizeof(status), "%.20s - %d lines",E.filen ? E.filen : "[No Name]", E.nrows);
 
-    int rlen = snprintf(rstatus, sizeof(rstatus), "%d%d", E.cy + 1, E.nrows);
+    int rlen = snprintf(rstatus, sizeof(rstatus), "%d-%d", E.cy + 1, E.nrows);
 
     if (len > E.screencols) len = E.screencols;
 	abAppend(ab, status, len);
@@ -55,6 +57,15 @@ ed_statusbar(struct abuf *ab)
 }
 
 void
+ed_set_status(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(E.statusmsg, sizeof(E.statusmsg), fmt, ap);
+    va_end(ap);
+}
+
+void
 ed_cmd_bar(struct abuf *ab)
 {
     abAppend(ab, "\r\n", 2);
@@ -64,6 +75,10 @@ ed_cmd_bar(struct abuf *ab)
         int len = snprintf(line, sizeof(line), ":%s", E.cmdbuf);
         if (len > E.screencols) len = E.screencols;
         abAppend(ab, line, len);
+    } else {
+	int len = strlen(E.statusmsg);
+	if (len > E.screencols) len = E.screencols;
+	abAppend(ab, E.statusmsg, len);
     }
 }
 
@@ -116,9 +131,7 @@ ed_move_word_right()
     if (E.cy >= E.nrows) return;
     erow *row = &E.row[E.cy];
 
-    // skip current word
     while (E.cx < row->size && row->chars[E.cx] != ' ') E.cx++;
-    // skip spaces
     while (E.cx < row->size && row->chars[E.cx] == ' ') E.cx++;
 }
 
@@ -129,9 +142,7 @@ ed_move_word_left()
     erow *row = &E.row[E.cy];
 
     if (E.cx > 0) E.cx--;
-    // skip spaces
     while (E.cx > 0 && row->chars[E.cx] == ' ') E.cx--;
-    // skip word
     while (E.cx > 0 && row->chars[E.cx - 1] != ' ') E.cx--;
 }
 
@@ -383,23 +394,67 @@ ed_delch()
     }
 }
 
-void
-ed_exec_cmd(char *cmd)
+enum Commands
+parse_command(const char *cmd)
 {
-    if (strcmp(cmd, "w") == 0) {
-        saveD();
-    } else if (strcmp(cmd, "quit") == 0) {
-        write(STDOUT_FILENO, "\x1b[2J", 4);
-        write(STDOUT_FILENO, "\x1b[H", 3);
-        exit(0);
-    } else if (strcmp(cmd, "write") == 0) {
-        saveD();
-        write(STDOUT_FILENO, "\x1b[2J", 4);
-        write(STDOUT_FILENO, "\x1b[H", 3);
-    } else if (strcmp(cmd, "explorer") == 0) {
-	fp_load();
-	E.file_mode = 1;
-	E.file_query[0] = '\0';
-	E.file_qlen = 0;
+    if (strcmp(cmd, "quit") == 0)
+        return QUIT;
+    if (strcmp(cmd, "write") == 0)
+        return WRITE;
+    if (strcmp(cmd, "explorer") == 0)
+        return EXPLORER;
+    if (strcmp(cmd, "open") == 0)
+        return OPEN;
+
+    return -1;
+}
+
+void
+ed_exec_cmd(char *cmd, int argc, char *argv[])
+{
+    switch (parse_command(cmd)){
+	case QUIT:
+	    write(STDOUT_FILENO, "\x1b[2J", 4);
+	    write(STDOUT_FILENO, "\x1b[H", 3);
+	    exit(0);
+	    break;
+	case WRITE:
+	    saveD();
+	    write(STDOUT_FILENO, "\x1b[2J", 4);
+	    write(STDOUT_FILENO, "\x1b[H", 3);
+	    ed_set_status("File writted");
+	    break;
+	case EXPLORER:
+	    fp_load();
+	    E.file_mode = 1;
+	    E.file_query[0] = '\0';
+	    E.file_qlen = 0;
+	    ed_set_status("Explorer: Type file name");
+	    break;
+	case OPEN:
+            if (argc > 0)
+	    {
+                openD(argv[0]);
+	    } else
+		ed_set_status("Use: open <filename>");
+	    break;
     }
+}
+
+void
+ed_parse_and_exec(char *input)
+{
+    char *tokens[16];
+    int argc = 0;
+
+    char *tok = strtok(input, " ");
+    char *cmd = tok;
+
+    tok = strtok(NULL, " ");
+    while (tok != NULL && argc < 15) {
+        tokens[argc++] = tok;
+        tok = strtok(NULL, " ");
+    }
+
+    ed_exec_cmd(cmd, argc, tokens);
 }

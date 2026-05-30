@@ -2,6 +2,7 @@
 #define EDITOR_H
 
 #include "../main.h"
+#include "../command.h"
 
 void ed_scroll();
 void ed_statusbar(struct abuf *ab);
@@ -33,11 +34,16 @@ void in_nw();
 
 void ed_delch();
 
-void ed_exec_cmd(char *cmd);
+void ed_set_status(const char *fmt, ...);
+
+void ed_exec_cmd(char *cmd, int argc, char *argv[]);
+
+enum Commands parse_command(const char *cmd);
+
+void ed_parse_and_exec(char *input);
 
 void ed_move_word_right();
 
 void ed_move_word_left();
-
 
 #endif
