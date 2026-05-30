@@ -1,0 +1,367 @@
+#include "editor.h"
+#include "../render/render.h"
+#include <errno.h>
+#include <sys/ioctl.h>
+
+void
+ed_scroll()
+{
+    E.rx = 0;
+    if (E.cy < E.nrows) {
+	E.rx = edit_rowto_cxtorx(&E.row[E.cy], E.cx);
+    }
+    if (E.cy < E.rowoff)
+    {
+	E.rowoff = E.cy;
+    }
+    if (E.cy >= E.rowoff + E.screenrows)
+    {
+	E.rowoff = E.cy - E.screenrows + 1;
+    }
+    if (E.rx < E.coloff)
+    {
+	E.coloff = E.rx;
+    }
+    if (E.rx >= E.coloff + E.screencols)
+    {
+	E.coloff = E.rx - E.screencols + 1;
+    }
+}
+
+void
+ed_statusbar(struct abuf *ab) 
+{
+    abAppend(ab, "\x1b[7m", 4);
+
+    char status[80], rstatus[80];
+
+    int len = snprintf(status, sizeof(status), "%.20s - %d lines",E.filen ? E.filen : "[No Name]", E.nrows);
+
+    int rlen = snprintf(rstatus, sizeof(rstatus), "%d%d", E.cy + 1, E.nrows);
+
+    if (len > E.screencols) len = E.screencols;
+	abAppend(ab, status, len);
+    while (len < E.screencols) {
+	if (E.screencols - len == rlen)
+	{
+	    abAppend(ab, rstatus, rlen);
+	    break;
+	} else {
+	    abAppend(ab, " ", 1);
+	    len++;
+	}
+    }
+    abAppend(ab, "\x1b[m", 3);
+}
+
+void
+ed_cmd_bar(struct abuf *ab)
+{
+    abAppend(ab, "\r\n", 2);
+    abAppend(ab, "\x1b[K", 3);
+    if (E.cmd_mode) {
+        char line[256];
+        int len = snprintf(line, sizeof(line), ":%s", E.cmdbuf);
+        if (len > E.screencols) len = E.screencols;
+        abAppend(ab, line, len);
+    }
+}
+
+int
+edit_read_key()
+{
+    int nread;
+    char c;
+
+    while ((nread = read(STDIN_FILENO, &c, 1))!= 1)
+    {
+	if (nread == -1 && errno != EAGAIN) die("read"); 
+    }
+
+  if (c == '\x1b') {
+    char seq[3];
+    if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
+    if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
+
+    if (seq[0] == '[') {
+      switch (seq[1]) {
+        case 'A': return AR_UP;
+        case 'B': return AR_DOWN;
+        case 'C': return AR_RIGHT;
+        case 'D': return AR_LEFT;
+      }
+    }
+    return '\x1b';
+  } else {
+    return c;
+  }
+}
+
+char
+*ed_rto_str(int *buflen)
+{
+    int totlen = 0;
+    int j;
+    for (j = 0; j < E.nrows; j++)
+	totlen += E.row[j].size + 1;
+    
+    *buflen = totlen;
+    char *buf = malloc(totlen);
+    char *p = buf;
+    for (j = 0; j < E.nrows; j++) {
+	memcpy(p, E.row[j].chars, E.row[j].size);
+	p += E.row[j].size;
+	*p = '\n';
+	p++;
+    }
+    return buf;
+}
+
+void
+ed_move_c(int key) 
+{
+    erow *row = (E.cy >= E.nrows) ? NULL : &E.row[E.cy];
+
+    switch (key) 
+    {
+	case AR_LEFT:
+	    if (E.cx != 0) {
+		E.cx--;
+	    } else if (E.cy > 0) {
+		E.cy--;
+		E.cx = E.row[E.cy].size;
+	    }
+	    break;
+	case AR_RIGHT:
+	    if (row && E.cx < row->size){
+		E.cx++;
+	    } else if (row && E.cx == row->size) {
+		E.cy++;
+		E.cx = 0;
+	    }
+	    break;
+	case AR_UP:
+	if (E.cy != 0) {
+	    E.cy--;
+	}
+	break;
+	case AR_DOWN:
+	    if (E.cy < E.nrows) {
+		E.cy++;
+	}
+    }
+    row = (E.cy >= E.nrows) ? NULL : &E.row[E.cy];
+    int rowlen = row ? row->size : 0;
+    if (E.cx > rowlen)
+	E.cx = rowlen;
+}
+
+int
+get_c_pos(int *cols, int *rows)
+{
+    char buf[32];
+    unsigned long i = 0;
+
+    if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) return -1;
+
+    while (i < sizeof(buf) - 1)
+    {
+	if (read(STDIN_FILENO, &buf[i], 1) != 1) break;
+	if (buf[i] == 'R') break;
+    }
+
+    buf[i] = '\0';
+    
+    if (buf[0] != '\x1b' || buf[1] != '[') return -1;
+    if (sscanf(&buf[2], "%d;%d", rows, cols) != 2) return -1;
+
+    return 0;
+}
+
+void
+ed_updtRow(erow *row) 
+{
+    int tabs = 0;
+    int j;
+    for (j = 0; j < row->size; j++)
+	if (row->chars[j] == '\t') tabs++;
+
+    free(row->render);
+    row->render = malloc(row->size + tabs*(TAB_STOP - 1) + 1);
+
+    int idx = 0;
+    for (j = 0; j < row->size; j++) {
+	if (row->chars[j] == '\t') {
+	    row->render[idx++] = ' ';
+	    while (idx % TAB_STOP != 0) row->render[idx++] = ' ';
+    } else {
+	row->render[idx++] = row->chars[j];
+    }
+    }
+	row->render[idx] = '\0';
+	row->rszs = idx;
+}
+
+int
+get_winsize(int *rows, int *cols)
+{
+    struct winsize ws;
+    
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0)
+    {
+	if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) return 1;
+	return get_c_pos(cols, rows);
+    }
+    else 
+    {
+	*cols = ws.ws_col;
+	*rows = ws.ws_row;
+	return 0;
+    }
+}
+
+void 
+ed_appendrow(char *s, size_t len)
+{
+    E.row = realloc(E.row, sizeof(erow) * (E.nrows + 1));
+    int at = E.nrows;
+    E.row[at].size = len;
+    E.row[at].chars = malloc(len + 1);
+    memcpy(E.row[at].chars, s, len);
+    E.row[at].chars[len] = '\0';
+    E.nrows++;
+    ed_updtRow(&E.row[at]);
+}
+
+void
+ed_freerow(erow *row)
+{
+  free(row->render);
+  free(row->chars);
+}
+
+void
+ed_delrow(int at)
+{
+  if (at < 0 || at >= E.nrows) return;
+  ed_freerow(&E.row[at]);
+  memmove(&E.row[at], &E.row[at + 1], sizeof(erow) * (E.nrows - at - 1));
+  E.nrows--;
+}
+
+void
+ed_inrows(int at, char *s, size_t len)
+{
+    if (at < 0 || at > E.nrows) return;
+    E.row = realloc(E.row, sizeof(erow) * (E.nrows + 1));
+
+    memmove(&E.row[at + 1], &E.row[at], sizeof(erow) * (E.nrows - at));
+
+    E.row[at].size = len;
+    E.row[at].chars = malloc(len + 1);
+    memcpy(E.row[at].chars, s, len);
+    E.row[at].chars[len] = '\0';
+    E.row[at].rszs = 0;
+    E.row[at].render = NULL;
+    ed_updtRow(&E.row[at]);
+    E.nrows++;
+}
+
+void
+ed_inrowsch(erow *row, int at, int c)
+{
+    if (at < 0 || at > row->size) at = row->size;
+    row->chars = realloc(row->chars, row->size + 2);
+
+    memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
+    row->size++;
+    row->chars[at] = c;
+    ed_updtRow(row);
+}
+
+void
+ed_rowappndstr(erow *row, char *s, size_t len) 
+{
+  row->chars = realloc(row->chars, row->size + len + 1);
+  memcpy(&row->chars[row->size], s, len);
+  row->size += len;
+  row->chars[row->size] = '\0';
+  ed_updtRow(row);
+}
+
+void
+ed_delrowsch(erow *row, int at) 
+{
+  if (at < 0 || at >= row->size) return;
+
+  memmove(&row->chars[at], &row->chars[at + 1], row->size - at);
+
+  row->size--;
+  ed_updtRow(row);
+}
+
+void
+ed_inch(int c) 
+{
+  if (E.cy == E.nrows) {
+    ed_inrows(E.nrows, " ", 0);
+  }
+  ed_inrowsch(&E.row[E.cy], E.cx, c);
+  E.cx++;
+}
+
+void
+in_nw()
+{
+  if (E.cx == 0) {
+    ed_inrows(E.cy, "", 0);
+  } else {
+    erow *row = &E.row[E.cy];
+    ed_inrows(E.cy + 1, &row->chars[E.cx], row->size - E.cx);
+    row = &E.row[E.cy];
+    row->size = E.cx;
+    row->chars[row->size] = '\0';
+    ed_updtRow(row);
+  }
+  E.cy += 1;
+  E.cx = 0;
+}
+
+void
+ed_delch() 
+{
+    if (E.cy == E.nrows) return;
+    if (E.cx == 0 && E.cy == 0) return;
+
+    erow *row = &E.row[E.cy];
+    if (E.cx > 0) {
+	ed_delrowsch(row, E.cx - 1);
+	E.cx--;
+    } else {
+	E.cx = E.row[E.cy - 1].size;
+	ed_rowappndstr(&E.row[E.cy - 1], row->chars, row->size);
+	ed_delrow(E.cy);
+	E.cy--;
+    }
+}
+
+void
+ed_exec_cmd(char *cmd)
+{
+    if (strcmp(cmd, "w") == 0) {
+        saveD();
+    } else if (strcmp(cmd, "quit") == 0) {
+        write(STDOUT_FILENO, "\x1b[2J", 4);
+        write(STDOUT_FILENO, "\x1b[H", 3);
+        exit(0);
+    } else if (strcmp(cmd, "write") == 0) {
+        saveD();
+        write(STDOUT_FILENO, "\x1b[2J", 4);
+        write(STDOUT_FILENO, "\x1b[H", 3);
+    } else if (strcmp(cmd, "explorer") == 0) {
+	fp_load();
+	E.file_mode = 1;
+	E.file_query[0] = '\0';
+	E.file_qlen = 0;
+    }
+}
