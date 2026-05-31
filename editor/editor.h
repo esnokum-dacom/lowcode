@@ -7,6 +7,7 @@
 void ed_scroll();
 void ed_statusbar(struct abuf *ab);
 void ed_cmd_bar(struct abuf *ab);
+void cmd_autoc();
 
 int edit_read_key();
 void ed_updtRow(erow *row);
@@ -36,14 +37,16 @@ void ed_delch();
 
 void ed_set_status(const char *fmt, ...);
 
-void ed_exec_cmd(char *cmd, int argc, char *argv[]);
+void ed_exec_cmd(char *cmd);
 
 enum Commands parse_command(const char *cmd);
 
 void ed_parse_and_exec(char *input);
 
 void ed_move_word_right();
-
 void ed_move_word_left();
+
+void ed_del_word_left();
+void ed_del_row();
 
 #endif

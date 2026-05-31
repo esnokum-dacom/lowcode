@@ -4,6 +4,7 @@
 #include "../command.h"
 #include <sys/ioctl.h>
 #include <stdarg.h>
+#include <dirent.h>
 
 void
 ed_scroll()
@@ -65,6 +66,34 @@ ed_set_status(const char *fmt, ...)
     va_end(ap);
 }
 
+
+void
+cmd_autoc()
+{
+    E.cmd_sugg[0] = '\0';
+    if (E.cmdlen == 0) return;
+
+    char *prefix = "open ";
+    int prefixlen = strlen(prefix);
+    if (strncmp(E.cmdbuf, prefix, prefixlen) != 0) return;
+
+    char *partial = E.cmdbuf + prefixlen;
+    int partallen = E.cmdlen - prefixlen;
+    if (partallen <= 0) return;
+
+    DIR *d = opendir(".");
+    if (!d) return;
+    struct dirent *entry;
+    while ((entry = readdir(d)) != NULL) {
+        if (strncmp(entry->d_name, partial, partallen) == 0) {
+            snprintf(E.cmd_sugg, sizeof(E.cmd_sugg), "open %s", entry->d_name);
+            closedir(d);
+            return;
+        }
+    }
+    closedir(d);
+}
+
 void
 ed_cmd_bar(struct abuf *ab)
 {
@@ -75,6 +104,13 @@ ed_cmd_bar(struct abuf *ab)
         int len = snprintf(line, sizeof(line), ":%s", E.cmdbuf);
         if (len > E.screencols) len = E.screencols;
         abAppend(ab, line, len);
+	cmd_autoc();
+        if (E.cmd_sugg[0] != '\0') {
+            abAppend(ab, "\x1b[2m", 4); 
+            abAppend(ab, E.cmd_sugg + E.cmdlen,
+                     strlen(E.cmd_sugg) - E.cmdlen);
+            abAppend(ab, "\x1b[m", 3); 
+        }
     } else {
 	int len = strlen(E.statusmsg);
 	if (len > E.screencols) len = E.screencols;
@@ -96,6 +132,9 @@ edit_read_key()
   if (c == '\x1b') {
     char seq[3];
     if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
+
+    if (seq[0] == '\x7f') return DEL_WORD_LEFT;
+
     if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
 
     if (seq[0] == '[') {
@@ -144,6 +183,26 @@ ed_move_word_left()
     if (E.cx > 0) E.cx--;
     while (E.cx > 0 && row->chars[E.cx] == ' ') E.cx--;
     while (E.cx > 0 && row->chars[E.cx - 1] != ' ') E.cx--;
+}
+
+void
+ed_del_word_left()
+{
+    if (E.cy >= E.nrows) return;
+    int end = E.cx;
+
+    ed_move_word_left();
+    while (end > E.cx)
+	ed_delrowsch(&E.row[E.cy], --end);
+}
+
+void
+ed_del_row()
+{
+    if (E.cy >= E.nrows) return;
+    ed_delrow(E.cy);
+    if (E.cy > 0 && E.cy >= E.nrows) E.cy--;
+    E.cx = 0;
 }
 
 char
@@ -403,14 +462,14 @@ parse_command(const char *cmd)
         return WRITE;
     if (strcmp(cmd, "explorer") == 0)
         return EXPLORER;
-    if (strcmp(cmd, "open") == 0)
-        return OPEN;
+    if (strncmp(cmd, "open", 4) == 0)
+	return OPEN;
 
     return -1;
 }
 
 void
-ed_exec_cmd(char *cmd, int argc, char *argv[])
+ed_exec_cmd(char *cmd)
 {
     switch (parse_command(cmd)){
 	case QUIT:
@@ -432,19 +491,21 @@ ed_exec_cmd(char *cmd, int argc, char *argv[])
 	    ed_set_status("Explorer: Type file name");
 	    break;
 	case OPEN:
-            if (argc > 0)
-	    {
-                openD(argv[0]);
-	    } else
+	    char *filename = strchr(cmd, ' ');
+	    if (filename) {
+		filename++; // skip the space
+		openD(filename);
+		ed_set_status("%s opened successfully", filename);
+	    } else {
 		ed_set_status("Use: open <filename>");
-	    break;
+	}
+    break;
     }
 }
 
 void
 ed_parse_and_exec(char *input)
 {
-    char *tokens[16];
     int argc = 0;
 
     char *tok = strtok(input, " ");
@@ -452,9 +513,8 @@ ed_parse_and_exec(char *input)
 
     tok = strtok(NULL, " ");
     while (tok != NULL && argc < 15) {
-        tokens[argc++] = tok;
         tok = strtok(NULL, " ");
     }
 
-    ed_exec_cmd(cmd, argc, tokens);
+    ed_exec_cmd(cmd);
 }

@@ -9,7 +9,6 @@
 #include <termios.h>
 #include <unistd.h>
 
-
 // defines
 
 #define CTRL_KEY(k) ((k) & 0x1f)
@@ -43,6 +42,7 @@ struct ed_conf
     int cmd_mode;
     char cmdbuf[256];
     int cmdlen;
+    char cmd_sugg[512];
     erow *row;
     char *filen;
 
@@ -63,14 +63,19 @@ extern struct ed_conf E;
 // enums
 
 enum editorKey {
-  BACKSPACE = 127,
-  AR_LEFT = 1000,
-  AR_RIGHT,
-  AR_UP,
-  AR_DOWN,
-  CTRL_AR_LEFT,
-  CTRL_AR_RIGHT,
+    BACKSPACE = 127,
+    AR_LEFT = 1000,
+    AR_RIGHT,
+    AR_UP,
+    AR_DOWN,
+    CTRL_AR_LEFT,
+    CTRL_AR_RIGHT,
+    DEL_WORD_LEFT,
 };
+
+// variables
+
+extern char *commands[];
 
 // functions
 

@@ -3,6 +3,8 @@
 
 #include "../main.h"
 
+#define LINENUM_WIDTH 4
+
 void rows(struct abuf *ab);
 int edit_rowto_cxtorx(erow *row, int cx);
 void refresh_screen();

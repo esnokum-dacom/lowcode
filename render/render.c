@@ -6,32 +6,36 @@ rows(struct abuf *ab)
 {
     int y;
     for (y = 0; y < E.screenrows; y++){
-	int filerow = y + E.rowoff;
-	if (filerow >= E.nrows) {
-	    if (E.nrows == 0 && y == E.screenrows / 3) {
-		char welcome[80];
-		int welcomelen = snprintf(welcome, sizeof(welcome), "Low Code");
-		if (welcomelen > E.screencols) welcomelen = E.screencols;
-		int padding = (E.screencols - welcomelen) / 2;
-		if (padding) 
-		{
-		    abAppend(ab, "~", 1);
-		    padding--;
-		}
-		while (padding--) abAppend(ab, " ", 1);
-		    abAppend(ab, welcome, welcomelen);
-		} else {
-		abAppend(ab, "~", 1);
-		}
-	    } else {
-	    int len = E.row[filerow].rszs - E.coloff;
-	    if (len < 0) len = 0;
-	    if (len > E.screencols) len = E.screencols;
-		abAppend(ab, &E.row[filerow].render[E.coloff], len);
-	    }
+        int filerow = y + E.rowoff;
 
-	    abAppend(ab, "\x1b[K", 3);
-	    abAppend(ab, "\r\n", 2);
+        char rowsn[16];
+        if (filerow < E.nrows)
+            snprintf(rowsn, sizeof(rowsn), "%3d ", filerow + 1);
+        else
+            snprintf(rowsn, sizeof(rowsn), "  ~ ");
+        abAppend(ab, rowsn, LINENUM_WIDTH);
+
+        if (filerow >= E.nrows) {
+            if (E.nrows == 0 && y == E.screenrows / 3) {
+                char welcome[80];
+                int welcomelen = snprintf(welcome, sizeof(welcome), "Low Code");
+                if (welcomelen > E.screencols) welcomelen = E.screencols;
+                int padding = (E.screencols - welcomelen) / 2;
+                if (padding) {
+                    padding--;
+                }
+                while (padding--) abAppend(ab, " ", 1);
+                abAppend(ab, welcome, welcomelen);
+            }
+        } else {
+            int len = E.row[filerow].rszs - E.coloff;
+            if (len < 0) len = 0;
+            if (len > E.screencols - LINENUM_WIDTH) len = E.screencols - LINENUM_WIDTH;
+            abAppend(ab, &E.row[filerow].render[E.coloff], len);
+        }
+
+        abAppend(ab, "\x1b[K", 3);
+        abAppend(ab, "\r\n", 2);
     }
 }
 
@@ -86,7 +90,7 @@ refresh_screen()
     char buf[32];
 
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1,
-                                            (E.rx - E.coloff) + 1);
+                                            (E.rx - E.coloff) + 1 + LINENUM_WIDTH);
     abAppend(&ab, buf, strlen(buf));
 
     abAppend(&ab, "\x1b[?25h", 6);

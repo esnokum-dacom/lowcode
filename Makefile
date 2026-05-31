@@ -1,7 +1,7 @@
 CC      = gcc
 TARGET  = lowcode 
 SRCS    = main.c render/render.c editor/editor.c
-CFLAGS  = -Wall -Wextra 
+CFLAGS  = -Wall -Wextra  -std=c11
 BINDIR  = $(HOME)/.local/bin
 
 $(TARGET): $(SRCS)

@@ -11,6 +11,8 @@
 
 struct ed_conf E;
 
+char *commands[] = {"w", "q", "wq", "files", NULL};
+
 void
 die(const char* s)
 {
@@ -154,7 +156,7 @@ fp_load()
     if (!d) return;
     struct dirent *entry;
     while ((entry = readdir(d)) != NULL) {
-        if (entry->d_name[0] == '.') continue; // skip hidden
+        if (entry->d_name[0] == '.') continue; 
         E.file_list = realloc(E.file_list, sizeof(char*) * (E.file_count + 1));
         char name[300];
         if (entry->d_type == DT_DIR)
@@ -171,6 +173,7 @@ void
 process_key_press()
 {
     int c = edit_read_key();
+    erow *rotw = (E.cy >= E.nrows) ? NULL : &E.row[E.cy];
 
     if (E.cmd_mode) {
         if (c == '\r') {
@@ -181,7 +184,7 @@ process_key_press()
 		ed_parse_and_exec(input_copy);
 	    else
 		E.statusmsg[0] = '\0';
-            E.cmd_mode = 0;
+	    E.cmd_mode = 0;
             E.cmdbuf[0] = '\0';
             E.cmdlen = 0;
         } else if (c == '\x1b') {
@@ -191,10 +194,17 @@ process_key_press()
         } else if (c == BACKSPACE) {
             if (E.cmdlen > 0)
                 E.cmdbuf[--E.cmdlen] = '\0';
+	} else if (c == '\t') {
+	    cmd_autoc();
+	    if (E.cmd_sugg[0] != '\0') {
+		strncpy(E.cmdbuf, E.cmd_sugg, sizeof(E.cmdbuf));
+		E.cmdlen = strlen(E.cmdbuf);
+		E.cmd_sugg[0] = '\0';
+	    }
         } else if (E.cmdlen < (int)sizeof(E.cmdbuf) - 1) {
             E.cmdbuf[E.cmdlen++] = c;
             E.cmdbuf[E.cmdlen] = '\0';
-        }
+        } 
         return; 
     }
 
@@ -220,6 +230,7 @@ process_key_press()
 			} else {
 			    E.file_mode = 0;
 			    openD(name);
+			    ed_set_status("%s opened succesfully", name);
 			}
 		    break;
 		    }
@@ -248,7 +259,7 @@ process_key_press()
 	}
 	return;
     }
-    
+ 
     switch (c)
     {
 	case '\r':
@@ -288,8 +299,10 @@ process_key_press()
 	case CTRL_AR_LEFT:
 	    ed_move_word_left();
 	    break;
+	case DEL_WORD_LEFT:
+	    ed_del_word_left();
+	    break;
 
-	case CTRL_KEY('l'):
 	case '\x1b':
 	    break;
 	case CTRL_KEY('c'):
@@ -297,12 +310,37 @@ process_key_press()
 	    E.cmdlen = 0;
 	    E.cmdbuf[0] = '\0';
 	    break;
+	case CTRL_KEY('d'):
+	    ed_del_row();
+	    break;
+	case CTRL_KEY('e'):
+	    E.cx = rotw->size;
+	    break;
+	case CTRL_KEY('w'):
+	    E.cx = 0;
+	    break;
+	case CTRL_KEY('j'):
+	    ed_move_c(AR_DOWN);
+	    break;
+	case CTRL_KEY('k'):    
+	    ed_move_c(AR_UP);
+	    break;
+	case CTRL_KEY('h'):
+	    ed_move_c(AR_LEFT);
+	    break;
+	case CTRL_KEY('l'):
+	    ed_move_c(AR_RIGHT);
+	    break;
 
 	default:
 	    ed_inch(c);
+	    if (c < 32 || c == 127) {
+		char dbg[16];
+		snprintf(dbg, sizeof(dbg), "<%d>", c);
+		ed_set_status(dbg);
+	    }
 	    break;
     }
-
 }
 
 int
@@ -313,6 +351,17 @@ main(int argc, char *argv[])
 
     if (argc >= 2)
 	openD(argv[1]);
+
+    if (argc >= 3)
+    {
+	int i;
+	for (i = 0; i < E.screenrows; i++){
+	    int filerow = i + E.nrows;
+	    if (atoi(argv[2]) >= filerow)
+		break;
+	    E.cy = atoi(argv[2]);
+	}
+    }
 
     while (1){
 	refresh_screen();

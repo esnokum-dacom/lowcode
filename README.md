@@ -1,5 +1,5 @@
 # Low-Code
-This is my low level (C) code editor.
+jThis is my low level (C) code editor.
 
 This text editor is based on the idea of NANO and vim.
 
@@ -10,6 +10,12 @@ This text editor is based on the idea of NANO and vim.
 | CTRL + S | Save the file |
 | CTRL + Q | Quit the editor |
 | CTRL + F | Open the explorer |
+| CTRL + W | Go to the start of line |
+| CTRL + E | Go to the end of line |
+| CTRL + vim(h, j, k, l)| Move like an arrows |
+| CTRL + ARROW_L/R | Move word by word (like vim E/B) |
+| CTRL + D | Delete the line/row |
+| ALT + BACKSPACE | Delete word by word |
 
 # COMMANDS
 ```cmd
@@ -21,4 +27,6 @@ This text editor is based on the idea of NANO and vim.
 ```cmd
  :explorer (To execute the file explorer)
 ```
+
+| The command ```cmd :open``` have autocomplete
 | This is written in the text editor, btw
