@@ -45,6 +45,7 @@ struct ed_conf
     char cmd_sugg[512];
     erow *row;
     char *filen;
+    int fileconfirm;
 
     char statusmsg[256];
 

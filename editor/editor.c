@@ -5,6 +5,7 @@
 #include <sys/ioctl.h>
 #include <stdarg.h>
 #include <dirent.h>
+#include <fcntl.h>
 
 void
 ed_scroll()
@@ -454,7 +455,7 @@ ed_delch()
 }
 
 enum Commands
-parse_command(const char *cmd)
+parse_command(char *cmd)
 {
     if (strcmp(cmd, "quit") == 0)
         return QUIT;
@@ -464,6 +465,9 @@ parse_command(const char *cmd)
         return EXPLORER;
     if (strncmp(cmd, "open", 4) == 0)
 	return OPEN;
+    if (strncmp(cmd, "new", 3) == 0) {
+	return NEW;
+}
 
     return -1;
 }
@@ -491,15 +495,26 @@ ed_exec_cmd(char *cmd)
 	    ed_set_status("Explorer: Type file name");
 	    break;
 	case OPEN:
-	    char *filename = strchr(cmd, ' ');
-	    if (filename) {
-		filename++; // skip the space
-		openD(filename);
-		ed_set_status("%s opened successfully", filename);
+	    char *fl = strchr(cmd, ' ');
+	    if (fl) {
+		fl++; 
+		openD(fl);
+		ed_set_status("%s opened successfully", fl);
 	    } else {
 		ed_set_status("Use: open <filename>");
-	}
-    break;
+	    }
+	    break;
+	case NEW:
+	    char *fln = cmd + 4;
+	    int fd = open(fln, O_CREAT | O_WRONLY, 0644);
+	    if (fd != -1) {
+		close(fd);
+		openD(fln);
+		ed_set_status("%s created", fln);
+	    } else {
+		ed_set_status("Error creating file");
+	    }
+	    break;
     }
 }
 

@@ -39,7 +39,7 @@ void ed_set_status(const char *fmt, ...);
 
 void ed_exec_cmd(char *cmd);
 
-enum Commands parse_command(const char *cmd);
+enum Commands parse_command(char *cmd);
 
 void ed_parse_and_exec(char *input);
 

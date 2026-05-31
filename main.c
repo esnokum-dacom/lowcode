@@ -81,6 +81,7 @@ init_ed()
     E.cmd_mode = 0;
     E.cmdbuf[0] = '\0';
     E.cmdlen = 0;
+    E.fileconfirm = 0;
     
     if (get_winsize(&E.screenrows, &E.screencols) == -1) die("get_winsize");
     E.screenrows -= 2;
@@ -201,7 +202,14 @@ process_key_press()
 		E.cmdlen = strlen(E.cmdbuf);
 		E.cmd_sugg[0] = '\0';
 	    }
-        } else if (E.cmdlen < (int)sizeof(E.cmdbuf) - 1) {
+        } else if (c == CTRL_KEY('n')) {
+	    E.file_mode = 0;
+	    E.cmd_mode = 1;
+	    E.cmdlen = 0;
+	    strncpy(E.cmdbuf, "new ", 5);
+	    E.cmdlen = 4;
+	    E.cmdbuf[E.cmdlen] = '\0';
+	}else if (E.cmdlen < (int)sizeof(E.cmdbuf) - 1) {
             E.cmdbuf[E.cmdlen++] = c;
             E.cmdbuf[E.cmdlen] = '\0';
         } 
@@ -245,12 +253,39 @@ process_key_press()
 	    for (int i = 0; i < E.file_count; i++) {
 		if (E.file_qlen > 0 && !strstr(E.file_list[i], E.file_query)) continue;
 		visible++;
-	    }
+	}
 	    if (E.file_sel < visible -1) E.file_sel++;
 	} else if (c == BACKSPACE) {
 	    if (E.file_qlen > 0) E.file_query[--E.file_qlen] = '\0';
 	    E.file_sel = 0;
-	} else if (c >= 32 && c < 127) {
+	} else if (c == CTRL_KEY('d')) {
+	    E.fileconfirm = 1;
+	    ed_set_status("Are you sure? Y(es)/N");
+	} else if (E.fileconfirm) {
+	    if (c == 'y'){
+		for (int i = 0, drawn = 0; i < E.file_count; i++) {
+		    if (E.file_qlen > 0 && !strstr(E.file_list[i], E.file_query)) continue;
+		    if (drawn == E.file_sel) {
+			char *name = E.file_list[i];
+			if (name[strlen(name) - 1] == '/') {
+			    ed_set_status("Can't delete directories");
+			    break;
+			}
+		    if (remove(name) == 0) {
+			ed_set_status("Deleted: %s", name);
+			fp_load();
+			if (E.file_sel >= E.file_count) E.file_sel--;
+			} else {
+			    ed_set_status("Error deleting: %s", name);
+			}
+		break;
+		}
+	    drawn++;
+	    }	
+	} else {
+	    ed_set_status("You canceled :N");
+	}
+	}else if (c >= 32 && c < 127) {
 	    if (E.file_qlen < (int)sizeof(E.file_query) - 1) {
 		E.file_query[E.file_qlen++] = c;
 	        E.file_query[E.file_qlen] = '\0';

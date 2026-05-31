@@ -5,4 +5,5 @@ enum Commands {
     WRITE,
     EXPLORER,
     OPEN,
+    NEW,
 };
