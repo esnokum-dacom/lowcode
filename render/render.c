@@ -2,6 +2,22 @@
 #include "../editor/editor.h"
 
 void
+draw_highlight(struct abuf *ab, erow *row, int coloff, int len, int cx1, int cx2)
+{
+    char *p = row->render + coloff; int offset = 0;
+
+    cx1 -= coloff; 
+    cx2 -= coloff;
+    if (cx1 > offset) abAppend(ab, p + offset, cx1 - offset);
+    
+    abAppend(ab, "\x1b[48;2;80;80;180m", 17); // blue bg
+    abAppend(ab, p + cx1, cx2 - cx1);
+    abAppend(ab, "\x1b[m", 3);
+
+    abAppend(ab, p + cx2, len - cx2);
+}
+
+void
 rows(struct abuf *ab)
 {
     int y;
@@ -26,16 +42,60 @@ rows(struct abuf *ab)
                 }
                 while (padding--) abAppend(ab, " ", 1);
                 abAppend(ab, welcome, welcomelen);
-            }
+            } 
         } else {
-            int len = E.row[filerow].rszs - E.coloff;
-            if (len < 0) len = 0;
-            if (len > E.screencols - LINENUM_WIDTH) len = E.screencols - LINENUM_WIDTH;
-            abAppend(ab, &E.row[filerow].render[E.coloff], len);
-        }
+	    int len = E.row[filerow].rszs - E.coloff;
+	    if (len < 0) len = 0;
+	    if (len > E.screencols - LINENUM_WIDTH) len = E.screencols - LINENUM_WIDTH;
+	    
+	    if (E.sel_mode && filerow >= E.st_row && filerow <= E.sb_row){
+		int cx1, cx2;
 
-        abAppend(ab, "\x1b[K", 3);
-        abAppend(ab, "\r\n", 2);
+		if (filerow == E.sel_start_row && filerow == E.SCeR) {
+		    cx1 = E.cx1;
+		    cx2 = E.cx2;
+		} else if (filerow == E.sel_start_row) {
+		    cx1 = E.cx1;
+		    cx2 = E.row[filerow].size;
+		} else if (filerow == E.SCeR) {
+		    cx1 = 0;
+		    cx2 = E.cx2;
+		} else {
+		    cx1 = 0;
+		    cx2 = E.row[filerow].size;
+		}
+
+		if (cx2 > E.row[filerow].rszs) cx2 = E.row[filerow].rszs;
+		if (cx1 > cx2) cx1 = cx2;
+
+		draw_highlight(ab, &E.row[filerow], E.coloff, len, cx1, cx2);
+	    }else if (E.search_qlen > 0) {
+	        char *p = E.row[filerow].render + E.coloff;
+	        int plen = strlen(E.search_pattern);
+	        int offset = 0;
+	    
+	        while (offset < len) {
+	            char *match = strstr(p + offset, E.search_pattern);
+	            if (!match || (match - p) >= len) break;
+	    
+	            int before = match - (p + offset);
+	            abAppend(ab, p + offset, before);
+	    
+	            abAppend(ab, "\x1b[38;2;0;0;0m", 13);
+	            abAppend(ab, "\x1b[48;2;255;200;0m", 17);
+	            abAppend(ab, match, plen);
+	            abAppend(ab, "\x1b[m", 3);
+	    
+	            offset += before + plen;
+	        }
+	        abAppend(ab, p + offset, len - offset);
+	    } else {
+	        abAppend(ab, &E.row[filerow].render[E.coloff], len);
+	    }
+	}
+	    
+	        abAppend(ab, "\x1b[K", 3);
+	        abAppend(ab, "\r\n", 2);
     }
 }
 

@@ -49,6 +49,24 @@ struct ed_conf
 
     char statusmsg[256];
 
+    char search_pattern[256];
+    int search_mode;
+    int search_qlen;
+    int search_dir;
+    int search_last_row, search_last_col;
+
+    int saved_cx, saved_cy;
+
+    // Selection
+    int sel_mode;
+    int CxI;
+    int sel_start_row, SCeR;
+    int sel_row;
+    int cx1, cx2;
+    int cy1, cy2;
+    int st_row;
+    int sb_row;
+
     int	file_mode;
     char **file_list;
     int file_count;

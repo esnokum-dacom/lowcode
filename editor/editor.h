@@ -9,6 +9,10 @@ void ed_statusbar(struct abuf *ab);
 void ed_cmd_bar(struct abuf *ab);
 void cmd_autoc();
 
+void ed_search();
+void ed_search_next(int dir);
+int ed_search_matches();
+
 int edit_read_key();
 void ed_updtRow(erow *row);
 
@@ -48,5 +52,6 @@ void ed_move_word_left();
 
 void ed_del_word_left();
 void ed_del_row();
+
 
 #endif

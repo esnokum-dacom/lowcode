@@ -96,6 +96,57 @@ cmd_autoc()
 }
 
 void
+ed_search()
+{
+    if (E.search_qlen == 0) return;
+
+    for (int i = 0; i < E.nrows; i++) {
+        int row = (E.cy + i) % E.nrows;
+        char *match = strstr(E.row[row].render, E.search_pattern);
+        if (match) {
+            E.cy = row;
+            E.cx = match - E.row[row].render;
+            E.rowoff = E.cy; 
+            return;
+        }
+    }
+}
+
+void
+ed_search_next(int dir)
+{
+    if (E.search_qlen == 0) return;
+
+    for (int i = 1; i <= E.nrows; i++) {
+        int row = (E.cy + i * dir + E.nrows) % E.nrows;
+        char *match = strstr(E.row[row].render, E.search_pattern);
+        if (match) {
+            E.cy = row;
+            E.cx = match - E.row[row].render;
+            E.rowoff = E.cy; 
+            return;
+        }
+    }
+    ed_set_status("No matches");
+}
+
+int
+ed_search_matches()
+{
+    int count = 0;
+    for (int i = 0; i < E.nrows; i++)
+    {
+	char *p = E.row[i].render;
+	while ((p = strstr(p, E.search_pattern)) != NULL)
+	{
+	    count++;
+	    p++;
+	}
+    }
+    return count;
+}
+
+void
 ed_cmd_bar(struct abuf *ab)
 {
     abAppend(ab, "\r\n", 2);
@@ -112,6 +163,11 @@ ed_cmd_bar(struct abuf *ab)
                      strlen(E.cmd_sugg) - E.cmdlen);
             abAppend(ab, "\x1b[m", 3); 
         }
+    } else if (E.search_mode) {
+	char line[256];
+	int len = snprintf(line, sizeof(line), "/%s", E.search_pattern);
+        if (len > E.screencols) len = E.screencols;
+	abAppend(ab, line, len);
     } else {
 	int len = strlen(E.statusmsg);
 	if (len > E.screencols) len = E.screencols;
@@ -465,10 +521,10 @@ parse_command(char *cmd)
         return EXPLORER;
     if (strncmp(cmd, "open", 4) == 0)
 	return OPEN;
-    if (strncmp(cmd, "new", 3) == 0) {
+    if (strncmp(cmd, "new", 3) == 0) 
 	return NEW;
-}
-
+    if (strncmp(cmd, "clear", 3) == 0)
+	return CLEAR;
     return -1;
 }
 
@@ -514,6 +570,11 @@ ed_exec_cmd(char *cmd)
 	    } else {
 		ed_set_status("Error creating file");
 	    }
+	    break;
+	case CLEAR:
+	    E.search_pattern[0] = '\0';
+	    E.search_qlen = 0;
+	    ed_set_status("Matches cleared [%d]", E.search_qlen);
 	    break;
     }
 }

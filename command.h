@@ -6,4 +6,5 @@ enum Commands {
     EXPLORER,
     OPEN,
     NEW,
+    CLEAR,
 };
