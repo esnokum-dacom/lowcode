@@ -5,6 +5,7 @@
 
 #define LINENUM_WIDTH 4
 
+void draw_highlight(struct abuf *ab, erow *row, int coloff, int len, int cx1, int cx2);
 void rows(struct abuf *ab);
 int edit_rowto_cxtorx(erow *row, int cx);
 void refresh_screen();

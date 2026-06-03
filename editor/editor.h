@@ -26,14 +26,19 @@ void ed_appendrow(char *s, size_t len);
 
 void ed_freerow(erow *row);
 
+void ed_del_selection();
+void ed_del_row_selection();
+
 void ed_delrow(int at);
 void ed_inrows(int at, char *s, size_t len);
 void ed_inrowsch(erow *row, int at, int c);
 
 void ed_rowappndstr(erow *row, char *s, size_t len);
 void ed_delrowsch(erow *row, int at);
-
+void ed_copy(const char *t, size_t l);
+void ed_copyrowsch();
 void ed_inch(int c);
+void ed_copy_row_selection();
 
 void in_nw();
 

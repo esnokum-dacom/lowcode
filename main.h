@@ -59,6 +59,8 @@ struct ed_conf
 
     // Selection
     int sel_mode;
+    int sel_row_mode;
+
     int CxI;
     int sel_start_row, SCeR;
     int sel_row;

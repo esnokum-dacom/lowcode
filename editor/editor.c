@@ -1,6 +1,8 @@
 #include "editor.h"
 #include "../render/render.h"
 #include <errno.h>
+#include <stddef.h>
+#include <stdio.h>
 #include "../command.h"
 #include <sys/ioctl.h>
 #include <stdarg.h>
@@ -144,6 +146,76 @@ ed_search_matches()
 	}
     }
     return count;
+}
+
+void
+ed_del_selection()
+{
+    if (!E.sel_mode) return;
+    
+    if (E.st_row == E.sb_row) {
+        erow *row = &E.row[E.st_row];
+        for (int i = E.cx2 - 1; i >= E.cx1; i--)
+	{
+            ed_delrowsch(row, i);
+	    ed_copyrowsch();
+	}
+        E.cx = E.cx1;
+        E.cy = E.st_row;
+    } else {
+        erow *first = &E.row[E.st_row];
+        for (int i = first->size - 1; i >= E.cx1; i--){
+            ed_delrowsch(first, i);
+	    ed_copyrowsch();
+	}
+    
+	for (int i = E.sb_row; i > E.st_row + 1; i--)
+	{
+	    ed_delrow(i);
+	    ed_copyrowsch();
+	}
+	
+	erow *last = &E.row[E.st_row + 1];
+	for (int i = E.cx2 - 1; i >= 0; i--)
+	{
+	    ed_delrowsch(last, i);
+	    ed_copyrowsch();
+	}
+	
+	ed_rowappndstr(&E.row[E.st_row], last->chars, last->size);
+	ed_delrow(E.st_row + 1);
+	
+	E.cx = E.cx1;
+	E.cy = E.st_row;
+    }
+
+    E.sel_mode = 0;
+    E.cx1 = 0;
+    E.cx2 = 0;
+}
+
+void
+ed_del_row_selection()
+{
+    if (!E.sel_row_mode) return;
+
+    struct abuf ab = ABUF_INIT;
+    
+    for (int i = E.sb_row; i >= E.st_row; i--)
+    {
+	abAppend(&ab, E.row[i].chars, E.row[i].size);
+	abAppend(&ab, "\n", 1);
+	ed_delrow(i);
+    }
+
+    ed_copy(ab.b, ab.len);
+    E.cy = E.st_row;
+    if (E.cy >= E.nrows) E.cy = E.nrows - 1;
+    if (E.cy < 0) E.cy = 0;
+    E.cx = 0;
+    E.sel_row_mode = 0;
+    abFree(&ab);
+    ed_set_status("Deleted %d lines", E.sb_row - E.st_row + 1);
 }
 
 void
@@ -463,6 +535,72 @@ ed_delrowsch(erow *row, int at)
 
   row->size--;
   ed_updtRow(row);
+}
+
+void
+ed_copy(const char *t, size_t l)
+{
+    FILE *cp = popen("xclip -selection clipboard", "w");
+    if (!cp){
+	ed_set_status("clipboard not founded");
+	return; 
+    }
+    fwrite(t, 1, l, cp);
+    pclose(cp);
+}
+
+void
+ed_copyrowsch()
+{
+    if (!E.sel_mode) return;
+
+    struct abuf ab = ABUF_INIT;
+
+    if (E.st_row == E.sb_row)
+    {
+	erow *row = &E.row[E.st_row];
+	abAppend(&ab, row->chars + E.cx1, E.cx2 - E.cx1);
+    } else {
+	erow *rowp = &E.row[E.st_row];
+	abAppend(&ab, rowp->chars + E.cx1, rowp->size - E.cx1);
+	abAppend(&ab, "\n", 1);
+
+	for (int i = E.st_row + 1; i < E.sb_row; i++)
+	{
+	    abAppend(&ab, E.row[i].chars, E.row[i].size);
+	    abAppend(&ab, "\n", 1);
+	}
+	
+	erow *last = &E.row[E.sb_row];
+	abAppend(&ab, last->chars, E.cx2);
+    }
+    ed_copy(ab.b, ab.len);
+    abFree(&ab);
+
+    E.sel_mode = 0;
+    ed_set_status("Yanked %d words", ab.len);
+}
+
+void
+ed_copy_row_selection()
+{
+    if (!E.sel_row_mode) return;
+
+    struct abuf ab = ABUF_INIT;
+    
+    for (int i = E.st_row; i <= E.sb_row; i++)
+    {
+	abAppend(&ab, E.row[i].chars, E.row[i].size);
+	abAppend(&ab, "\n", 1);
+    }
+
+    ed_copy(ab.b, ab.len);
+    ed_set_status("Yanked [%d] lines", E.sb_row - E.st_row + 1);
+    abFree(&ab);
+
+    E.sel_row_mode = 0;
+    E.st_row = -1;
+    E.sb_row = -1;
 }
 
 void

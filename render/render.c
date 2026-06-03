@@ -69,6 +69,28 @@ rows(struct abuf *ab)
 		if (cx1 > cx2) cx1 = cx2;
 
 		draw_highlight(ab, &E.row[filerow], E.coloff, len, cx1, cx2);
+
+	    }else if (E.sel_row_mode && filerow >= E.st_row && filerow <= E.sb_row){
+		int cx1, cx2;
+
+		if (filerow == E.sel_start_row && filerow == E.SCeR) {
+		    cx1 = 0;
+		    cx2 = E.row[E.sel_start_row].rszs;
+		} else if (filerow == E.st_row) {
+		    cx1 = 0;
+		    cx2 = E.row[filerow].rszs;
+		} else if (filerow == E.sb_row) {
+		    cx1 = 0;
+		    cx2 = E.row[filerow].size;
+		} else {
+		    cx1 = 0;
+		    cx2 = E.row[filerow].rszs;
+		}
+
+		if (cx2 > E.row[filerow].rszs) cx2 = E.row[filerow].rszs;
+		if (cx1 > cx2) cx1 = cx2;
+
+		draw_highlight(ab, &E.row[filerow], E.coloff, len, cx1, cx2);
 	    }else if (E.search_qlen > 0) {
 	        char *p = E.row[filerow].render + E.coloff;
 	        int plen = strlen(E.search_pattern);

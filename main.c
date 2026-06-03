@@ -107,6 +107,8 @@ openD(char *filename)
 
     FILE *fp = fopen(filename, "r");
     if (!fp) die("fopen");
+	    // TODO
+	    E.sel_mode = 0;
 
     char *line = NULL;
     size_t linecap = 0;
@@ -179,14 +181,72 @@ process_key_press()
     int c = edit_read_key();
     erow *rotw = (E.cy >= E.nrows) ? NULL : &E.row[E.cy];
 
-    if (E.sel_mode){
+    if (E.sel_row_mode){
 	if (c == '\x1b'){
-	    E.sel_mode = 0;
-	    E.CxI = E.cx;
-	    E.sel_start_row = E.cy;
-	    E.SCeR = E.cy;
+	    E.sel_row_mode = 0;
 	    E.cx1 = E.cx;
 	    E.cx2 = E.cx + 1;
+	    E.st_row = -1;
+	    E.sb_row = -1;
+	    E.sel_start_row = -1;
+	    E.SCeR = -1;
+	    ed_set_status("\0");
+	    return;
+	} else if (c == AR_LEFT || c == CTRL_KEY('h')) {
+	    ed_move_c(AR_LEFT);
+	} else if (c == AR_RIGHT || c == CTRL_KEY('l')) {
+	    ed_move_c(AR_RIGHT);
+	} else if (c == AR_UP || c == CTRL_KEY('k')) {
+	    ed_move_c(AR_UP);
+	} else if (c == AR_DOWN || c == CTRL_KEY('j')) {
+	    ed_move_c(AR_DOWN);
+	} else if (c == 'd') {
+	    ed_del_row_selection();
+	    E.sel_mode = 0;
+	} else if (c == 'y') {
+	    ed_copy_row_selection();
+	    E.sel_mode = 0;
+	}
+
+	int t_r = E.sel_start_row < E.cy ? E.sel_start_row : E.cy;
+	int b_r = E.sel_start_row < E.cy ? E.cy : E.sel_start_row;
+
+	E.st_row = t_r;
+	E.sb_row = b_r;
+
+	E.SCeR = b_r;
+	if (E.cy == E.sel_start_row) 
+	{
+	    if (E.cx <= E.CxI)
+	    {
+	        E.cx1 = E.cx;
+	        E.cx2 = E.CxI;
+	    }
+	    else
+	    {
+		E.cx1 = E.CxI;
+		E.cx2 = E.cx + 1;
+	    }
+	
+	} else if (E.cy < E.sel_start_row)
+	{
+	    E.cx1 = E.cx;
+	    E.cx2 = E.row[E.cy].size;
+	} else
+	{
+	    E.cx1 = E.CxI;
+	    E.cx2 = E.cx + 1;
+	}
+
+    return;
+    }else if (E.sel_mode){
+	if (c == '\x1b'){
+	    E.sel_mode = 0;
+	    E.cx1 = E.cx;
+	    E.cx2 = E.cx + 1;
+	    E.st_row = -1;
+	    E.sb_row = -1;
+	    E.SCeR = 0;
 	    ed_set_status("\0");
 	} else if (c == AR_LEFT || c == CTRL_KEY('h')) {
 	    ed_move_c(AR_LEFT);
@@ -197,11 +257,13 @@ process_key_press()
 	} else if (c == AR_DOWN || c == CTRL_KEY('j')) {
 	    ed_move_c(AR_DOWN);
 	} else if (c == 'd') {
-	    // TODO
+	    ed_del_selection();
 	    E.sel_mode = 0;
+	    ed_set_status("\0");
 	} else if (c == 'y') {
-	    // TODO
+	    ed_copyrowsch();
 	    E.sel_mode = 0;
+	    ed_set_status("\0");
 	}
 
 	int t_r = E.sel_start_row < E.cy ? E.sel_start_row : E.cy;
@@ -435,10 +497,24 @@ process_key_press()
 	    E.sel_mode = 1;
 	    E.CxI = E.cx;
 	    E.sel_start_row = E.cy;
+	    E.st_row = E.cy;
+	    E.sb_row = E.cy;
 	    E.SCeR = E.cy;
 	    E.cx1 = E.cx;
 	    E.cx2 = E.cx + 1;
 	    ed_set_status("__Select__");
+	    break;
+
+	case CTRL_KEY('r'):
+	    E.sel_row_mode = 1;
+	    E.CxI = 0;
+	    E.sel_start_row = E.cy;
+	    E.st_row = E.cy;
+	    E.sb_row = E.cy;
+	    E.SCeR = E.cy;
+	    E.cx1 = 0;
+	    E.cx2 = E.row[E.cy].rszs;
+	    ed_set_status("__Row Select__");
 	    break;
 
 	case CTRL_AR_RIGHT:
