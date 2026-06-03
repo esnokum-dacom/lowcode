@@ -10,7 +10,7 @@ draw_highlight(struct abuf *ab, erow *row, int coloff, int len, int cx1, int cx2
     cx2 -= coloff;
     if (cx1 > offset) abAppend(ab, p + offset, cx1 - offset);
     
-    abAppend(ab, "\x1b[48;2;80;80;180m", 17); // blue bg
+    abAppend(ab, "\x1b[48;2;80;80;180m", 17);
     abAppend(ab, p + cx1, cx2 - cx1);
     abAppend(ab, "\x1b[m", 3);
 

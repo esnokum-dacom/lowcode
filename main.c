@@ -234,19 +234,6 @@ process_key_press()
 	    E.cx1 = E.CxI;
 	    E.cx2 = E.cx + 1;
 	}
-
-	// if (E.sel_start_row == E.cy) {
-	//     E.sel_row = E.cy;
-	//     if (E.cx <= E.CxI) 
-	//     {
-	//         E.cx1 = E.cx;
-	//         E.cx2 = E.CxI;
-	//     } else 
-	//     {
-	//         E.cx1 = E.CxI;
-	//         E.cx2 = E.cx + 1;
-	//     }
-	// }
     return;
     } else if (E.search_mode) {
 	if (c == '\r'){
