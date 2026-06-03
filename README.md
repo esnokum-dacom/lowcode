@@ -1,5 +1,5 @@
 # Low-Code
-jThis is my low level (C) code editor.
+This is my low level (C) code editor.
 
 This text editor is based on the idea of NANO and vim.
 
@@ -16,6 +16,9 @@ This text editor is based on the idea of NANO and vim.
 | CTRL + ARROW_L/R | Move word by word (like vim E/B) |
 | CTRL + D | Delete the line/row |
 | ALT + BACKSPACE | Delete word by word |
+| CTRL + V | Select mode |
+| CTRL + R | Select rows mode |
+| / | Search by words in the file | 
 
 # COMMANDS
 ```cmd
@@ -26,6 +29,9 @@ This text editor is based on the idea of NANO and vim.
 ```
 ```cmd
  :explorer (To execute the file explorer)
+```
+```cmd
+ :clear (To clear the searches highlights)
 ```
 
 | The command ```cmd :open``` have autocomplete

@@ -194,18 +194,22 @@ process_key_press()
 	    return;
 	} else if (c == AR_LEFT || c == CTRL_KEY('h')) {
 	    ed_move_c(AR_LEFT);
+	} else if (c == CTRL_AR_LEFT || c == 'b') {
+	    ed_move_word_left();
 	} else if (c == AR_RIGHT || c == CTRL_KEY('l')) {
 	    ed_move_c(AR_RIGHT);
+	} else if (c == CTRL_AR_RIGHT || c == 'e') {
+	    ed_move_word_right();
 	} else if (c == AR_UP || c == CTRL_KEY('k')) {
 	    ed_move_c(AR_UP);
 	} else if (c == AR_DOWN || c == CTRL_KEY('j')) {
 	    ed_move_c(AR_DOWN);
 	} else if (c == 'd') {
 	    ed_del_row_selection();
-	    E.sel_mode = 0;
+	    E.sel_row_mode = 0;
 	} else if (c == 'y') {
 	    ed_copy_row_selection();
-	    E.sel_mode = 0;
+	    E.sel_row_mode = 0;
 	}
 
 	int t_r = E.sel_start_row < E.cy ? E.sel_start_row : E.cy;
@@ -250,8 +254,12 @@ process_key_press()
 	    ed_set_status("\0");
 	} else if (c == AR_LEFT || c == CTRL_KEY('h')) {
 	    ed_move_c(AR_LEFT);
+	} else if (c == CTRL_AR_LEFT || c == 'b') {
+	    ed_move_word_left();
 	} else if (c == AR_RIGHT || c == CTRL_KEY('l')) {
 	    ed_move_c(AR_RIGHT);
+	} else if (c == CTRL_AR_RIGHT || c == 'e') {
+	    ed_move_word_right();
 	} else if (c == AR_UP || c == CTRL_KEY('k')) {
 	    ed_move_c(AR_UP);
 	} else if (c == AR_DOWN || c == CTRL_KEY('j')) {
@@ -537,7 +545,7 @@ process_key_press()
 	case CTRL_KEY('d'):
 	    ed_del_row();
 	    break;
-	case CTRL_KEY('e'):
+	case CTRL_KEY('a'):
 	    E.cx = rotw->size;
 	    break;
 	case CTRL_KEY('w'):

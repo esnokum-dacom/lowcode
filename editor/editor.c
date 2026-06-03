@@ -298,9 +298,10 @@ ed_move_word_right()
 {
     if (E.cy >= E.nrows) return;
     erow *row = &E.row[E.cy];
-
-    while (E.cx < row->size && row->chars[E.cx] != ' ') E.cx++;
-    while (E.cx < row->size && row->chars[E.cx] == ' ') E.cx++;
+    while (E.cx < row->size && row->chars[E.cx] != ' ')
+	E.cx++;
+    while (E.cx < row->size && row->chars[E.cx] == ' ')
+	E.cx++;
 }
 
 void
