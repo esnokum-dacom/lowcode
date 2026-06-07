@@ -451,7 +451,8 @@ process_key_press()
 	    in_nw();
 	    break;
 	case '\t':
-	    ed_inch('\t');
+	    for (int i = 0; i < 5; ++i)
+		ed_inch(' ');
 	    break;
 	case CTRL_KEY('q'):
 	    write(STDOUT_FILENO, "\x1b[2J", 4);
